@@ -227,3 +227,197 @@ textarea {
         padding: 10px 12px 15px;
     }
 }
+/* ========================================
+   GPT-STYLE AI RESPONSES
+======================================== */
+
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+    margin: 18px 0 10px;
+    line-height: 1.3;
+}
+
+.message-content h2 {
+    font-size: 22px;
+}
+
+.message-content h3 {
+    font-size: 19px;
+}
+
+.message-content h4 {
+    font-size: 17px;
+}
+
+.message-content strong {
+    font-weight: 700;
+}
+
+.message-content em {
+    font-style: italic;
+}
+
+
+/* ========================================
+   INLINE CODE
+======================================== */
+
+.inline-code {
+    background: #eef5ff;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 0.92em;
+}
+
+
+/* ========================================
+   CODE BLOCK
+======================================== */
+
+.code-wrapper {
+    margin: 16px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #172033;
+    border: 1px solid #26344f;
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    background: #202b40;
+}
+
+.code-language {
+    color: #dce7f7;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.copy-code {
+    border: none;
+    background: #ffffff;
+    color: #172033;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.copy-code:hover {
+    opacity: 0.85;
+}
+
+.ai-code {
+    margin: 0;
+    padding: 15px;
+    overflow-x: auto;
+    color: #ffffff;
+    font-family: "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre;
+}
+
+
+/* ========================================
+   BLOCKQUOTE
+======================================== */
+
+.message-content blockquote {
+    margin: 14px 0;
+    padding: 10px 14px;
+    border-left: 4px solid #1677ff;
+    background: #f5f9ff;
+}
+
+
+/* ========================================
+   LISTS
+======================================== */
+
+.ai-list-item {
+    display: flex;
+    gap: 8px;
+    margin: 7px 0;
+    line-height: 1.6;
+}
+
+.list-number {
+    font-weight: 700;
+}
+
+.list-bullet {
+    font-weight: 700;
+}
+
+
+/* ========================================
+   TYPING ANIMATION
+======================================== */
+
+.typing-dot {
+    display: inline-block;
+    margin-right: 3px;
+    animation: gmTyping 1.2s infinite;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes gmTyping {
+
+    0%,
+    60%,
+    100% {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+
+}
+
+
+/* ========================================
+   MOBILE
+======================================== */
+
+@media (max-width: 600px) {
+
+    .message-content h2 {
+        font-size: 19px;
+    }
+
+    .message-content h3 {
+        font-size: 17px;
+    }
+
+    .message-content h4 {
+        font-size: 16px;
+    }
+
+    .ai-code {
+        font-size: 12px;
+        padding: 12px;
+    }
+
+    .code-header {
+        padding: 8px 10px;
+    }
+
+    }
