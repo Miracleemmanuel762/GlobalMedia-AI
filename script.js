@@ -1,6 +1,9 @@
+}
+
 // ========================================
 // GLOBALMEDIA AI
-// GPT-STYLE RESPONSE + COPY CODE
+// FIXED GPT-STYLE RESPONSE SYSTEM
+// + RELIABLE COPY CODE
 // ========================================
 
 
@@ -32,7 +35,7 @@ const newChatButton =
 
 
 // ========================================
-// CONVERSATION MEMORY
+// CONVERSATION HISTORY
 // ========================================
 
 let conversationHistory = [];
@@ -44,92 +47,73 @@ let conversationHistory = [];
 
 function formatAIResponse(text) {
 
-  let html = text;
+  let html = String(text || "");
 
-  // Escape HTML first
+  // --------------------------------------
+  // ESCAPE HTML
+  // --------------------------------------
+
   html = html
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
 
-  // ======================================
-  // CODE BLOCKS
-  // ======================================
+  // --------------------------------------
+  // PROTECT CODE BLOCKS
+  // --------------------------------------
+
+  const codeBlocks = [];
 
   html = html.replace(
-    /```(\w+)?\n?([\s\S]*?)```/g,
+    /```([a-zA-Z0-9_+-]*)\s*\n?([\s\S]*?)```/g,
     function(match, language, code) {
 
-      const lang =
-        language || "code";
+      const index =
+        codeBlocks.length;
 
       const cleanCode =
-        code.trim();
+        code
+          .replace(/\r\n/g, "\n")
+          .replace(/\r/g, "\n")
+          .trim();
 
-      const encodedCode =
-        encodeURIComponent(cleanCode);
+      codeBlocks.push({
+        language:
+          language || "code",
 
-      return `
-        <div class="code-wrapper">
+        code:
+          cleanCode
+      });
 
-          <div class="code-header">
-
-            <span class="code-language">
-              ${lang}
-            </span>
-
-            <button
-              class="copy-code"
-              data-code="${encodedCode}"
-              onclick="copyCode(this)"
-            >
-              Copy
-            </button>
-
-          </div>
-
-          <pre class="ai-code"><code>${cleanCode}</code></pre>
-
-        </div>
-      `;
+      return `___GLOBALMEDIA_CODE_${index}___`;
     }
   );
 
 
-  // ======================================
-  // INLINE CODE
-  // ======================================
-
-  html = html.replace(
-    /`([^`]+)`/g,
-    "<code class='inline-code'>$1</code>"
-  );
-
-
-  // ======================================
+  // --------------------------------------
   // HEADINGS
-  // ======================================
+  // --------------------------------------
 
   html = html.replace(
-    /^### (.*)$/gm,
+    /^###\s+(.*)$/gm,
     "<h4>$1</h4>"
   );
 
   html = html.replace(
-    /^## (.*)$/gm,
+    /^##\s+(.*)$/gm,
     "<h3>$1</h3>"
   );
 
   html = html.replace(
-    /^# (.*)$/gm,
+    /^#\s+(.*)$/gm,
     "<h2>$1</h2>"
   );
 
 
-  // ======================================
+  // --------------------------------------
   // BOLD
-  // ======================================
+  // --------------------------------------
 
   html = html.replace(
     /\*\*(.*?)\*\*/g,
@@ -137,19 +121,29 @@ function formatAIResponse(text) {
   );
 
 
-  // ======================================
+  // --------------------------------------
   // ITALIC
-  // ======================================
+  // --------------------------------------
 
   html = html.replace(
-    /(?<!\*)\*([^*]+)\*(?!\*)/g,
+    /(?<!\*)\*([^*\n]+)\*(?!\*)/g,
     "<em>$1</em>"
   );
 
 
-  // ======================================
-  // BLOCKQUOTE
-  // ======================================
+  // --------------------------------------
+  // INLINE CODE
+  // --------------------------------------
+
+  html = html.replace(
+    /`([^`\n]+)`/g,
+    "<code class=\"inline-code\">$1</code>"
+  );
+
+
+  // --------------------------------------
+  // BLOCKQUOTES
+  // --------------------------------------
 
   html = html.replace(
     /^>\s?(.*)$/gm,
@@ -157,39 +151,35 @@ function formatAIResponse(text) {
   );
 
 
-  // ======================================
-  // NUMBERED LISTS
-  // ======================================
+  // --------------------------------------
+  // NUMBERED LIST
+  // --------------------------------------
 
   html = html.replace(
     /^\s*(\d+)\.\s+(.*)$/gm,
-    `
-      <div class="ai-list-item">
-        <span class="list-number">$1.</span>
-        <span>$2</span>
-      </div>
-    `
+    `<div class="ai-list-item">
+       <span class="list-number">$1.</span>
+       <span>$2</span>
+     </div>`
   );
 
 
-  // ======================================
-  // BULLET LISTS
-  // ======================================
+  // --------------------------------------
+  // BULLET LIST
+  // --------------------------------------
 
   html = html.replace(
     /^\s*[-•]\s+(.*)$/gm,
-    `
-      <div class="ai-list-item">
-        <span class="list-bullet">•</span>
-        <span>$1</span>
-      </div>
-    `
+    `<div class="ai-list-item">
+       <span class="list-bullet">•</span>
+       <span>$1</span>
+     </div>`
   );
 
 
-  // ======================================
-  // LINE BREAKS
-  // ======================================
+  // --------------------------------------
+  // NEWLINES
+  // --------------------------------------
 
   html = html.replace(
     /\n\n/g,
@@ -199,6 +189,57 @@ function formatAIResponse(text) {
   html = html.replace(
     /\n/g,
     "<br>"
+  );
+
+
+  // --------------------------------------
+  // RESTORE CODE BLOCKS
+  // --------------------------------------
+
+  codeBlocks.forEach(
+    function(block, index) {
+
+      const placeholder =
+        `___GLOBALMEDIA_CODE_${index}___`;
+
+      const safeCode =
+        block.code
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+
+      const codeHTML = `
+        <div class="code-wrapper">
+
+          <div class="code-header">
+
+            <span class="code-language">
+              ${block.language}
+            </span>
+
+            <button
+              type="button"
+              class="copy-code"
+              data-code-index="${index}"
+            >
+              Copy
+            </button>
+
+          </div>
+
+          <pre class="ai-code"><code>${safeCode}</code></pre>
+
+        </div>
+      `;
+
+      html =
+        html.replace(
+          placeholder,
+          codeHTML
+        );
+
+    }
   );
 
 
@@ -221,9 +262,9 @@ function addMessage(text, sender) {
       : "message ai-message";
 
 
-  // ======================================
+  // --------------------------------------
   // AVATAR
-  // ======================================
+  // --------------------------------------
 
   const avatar =
     document.createElement("div");
@@ -237,9 +278,9 @@ function addMessage(text, sender) {
       : "GM";
 
 
-  // ======================================
-  // CONTENT
-  // ======================================
+  // --------------------------------------
+  // MESSAGE CONTENT
+  // --------------------------------------
 
   const content =
     document.createElement("div");
@@ -275,6 +316,189 @@ function addMessage(text, sender) {
 
 
 // ========================================
+// COPY CODE
+// ========================================
+
+async function copyCode(button) {
+
+  const codeIndex =
+    Number(
+      button.getAttribute(
+        "data-code-index"
+      )
+    );
+
+
+  /*
+    Find the actual code block
+    inside the same wrapper.
+  */
+
+  const wrapper =
+    button.closest(
+      ".code-wrapper"
+    );
+
+
+  if (!wrapper) {
+
+    console.error(
+      "Code wrapper not found."
+    );
+
+    return;
+
+  }
+
+
+  const codeElement =
+    wrapper.querySelector(
+      "code"
+    );
+
+
+  if (!codeElement) {
+
+    console.error(
+      "Code element not found."
+    );
+
+    return;
+
+  }
+
+
+  const code =
+    codeElement.textContent;
+
+
+  try {
+
+    await navigator.clipboard.writeText(
+      code
+    );
+
+
+    const oldText =
+      button.textContent;
+
+
+    button.textContent =
+      "Copied ✓";
+
+
+    setTimeout(
+      function() {
+
+        button.textContent =
+          oldText;
+
+      },
+      2000
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Clipboard error:",
+      error
+    );
+
+
+    /*
+      Fallback for browsers where
+      Clipboard API is unavailable.
+    */
+
+    const textarea =
+      document.createElement(
+        "textarea"
+      );
+
+    textarea.value =
+      code;
+
+    textarea.style.position =
+      "fixed";
+
+    textarea.style.left =
+      "-9999px";
+
+    document.body.appendChild(
+      textarea
+    );
+
+    textarea.select();
+
+
+    try {
+
+      document.execCommand(
+        "copy"
+      );
+
+      button.textContent =
+        "Copied ✓";
+
+    } catch (fallbackError) {
+
+      console.error(
+        fallbackError
+      );
+
+      button.textContent =
+        "Copy failed";
+
+    }
+
+
+    document.body.removeChild(
+      textarea
+    );
+
+
+    setTimeout(
+      function() {
+
+        button.textContent =
+          "Copy";
+
+      },
+      2000
+    );
+
+  }
+
+}
+
+
+// ========================================
+// CODE COPY EVENT
+// ========================================
+
+document.addEventListener(
+  "click",
+  function(event) {
+
+    const button =
+      event.target.closest(
+        ".copy-code"
+      );
+
+
+    if (!button) {
+      return;
+    }
+
+
+    copyCode(button);
+
+  }
+);
+
+
+// ========================================
 // TYPING INDICATOR
 // ========================================
 
@@ -303,6 +527,7 @@ function showTyping() {
   content.className =
     "message-content";
 
+
   content.innerHTML = `
     <span class="typing-dot">●</span>
     <span class="typing-dot">●</span>
@@ -310,66 +535,24 @@ function showTyping() {
   `;
 
 
-  wrapper.appendChild(avatar);
+  wrapper.appendChild(
+    avatar
+  );
 
-  wrapper.appendChild(content);
+  wrapper.appendChild(
+    content
+  );
 
-  messagesContainer.appendChild(wrapper);
+  messagesContainer.appendChild(
+    wrapper
+  );
+
 
   scrollToBottom();
 
 
   return wrapper;
 }
-
-
-// ========================================
-// COPY CODE
-// ========================================
-
-window.copyCode = async function(button) {
-
-  try {
-
-    const encoded =
-      button.getAttribute("data-code");
-
-    const code =
-      decodeURIComponent(encoded);
-
-
-    await navigator.clipboard.writeText(code);
-
-
-    const originalText =
-      button.textContent;
-
-
-    button.textContent =
-      "Copied ✓";
-
-
-    setTimeout(() => {
-
-      button.textContent =
-        originalText;
-
-    }, 2000);
-
-
-  } catch (error) {
-
-    console.error(
-      "Copy failed:",
-      error
-    );
-
-    button.textContent =
-      "Failed";
-
-  }
-
-};
 
 
 // ========================================
@@ -412,7 +595,8 @@ async function sendMessage() {
   );
 
 
-  messageInput.value = "";
+  messageInput.value =
+    "";
 
 
   const typingMessage =
@@ -473,10 +657,14 @@ async function sendMessage() {
     );
 
 
-    // Save conversation
+    // ------------------------------------
+    // SAVE CONVERSATION
+    // ------------------------------------
+
     conversationHistory.push({
 
-      role: "user",
+      role:
+        "user",
 
       text:
         message
@@ -486,7 +674,8 @@ async function sendMessage() {
 
     conversationHistory.push({
 
-      role: "model",
+      role:
+        "model",
 
       text:
         aiReply
@@ -497,7 +686,7 @@ async function sendMessage() {
   } catch (error) {
 
     console.error(
-      "GlobalMedia AI:",
+      "GlobalMedia AI Error:",
       error
     );
 
@@ -575,7 +764,8 @@ if (newChatButton) {
     "click",
     function() {
 
-      conversationHistory = [];
+      conversationHistory =
+        [];
 
 
       messagesContainer.innerHTML = `
@@ -589,7 +779,9 @@ if (newChatButton) {
           <div class="message-content">
 
             Hello! 👋 I'm
-            <strong>GlobalMedia AI</strong>.
+            <strong>
+              GlobalMedia AI
+            </strong>.
 
             <br><br>
 
@@ -602,11 +794,12 @@ if (newChatButton) {
       `;
 
 
-      messageInput.value = "";
+      messageInput.value =
+        "";
 
       messageInput.focus();
 
     }
   );
 
-}
+    }
