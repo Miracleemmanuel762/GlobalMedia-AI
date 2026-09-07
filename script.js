@@ -1,11 +1,11 @@
 // ========================================
 // GLOBALMEDIA AI
-// Frontend Chat System
+// GPT-STYLE RESPONSE + COPY CODE
 // ========================================
 
 
 // ========================================
-// DEVELOPER INFORMATION
+// DEVELOPER
 // ========================================
 
 const DEVELOPER_NAME = "Miracle Emmanuel";
@@ -39,89 +39,170 @@ let conversationHistory = [];
 
 
 // ========================================
-// MARKDOWN FORMATTER
+// FORMAT AI RESPONSE
 // ========================================
 
 function formatAIResponse(text) {
 
-  let safeText = text
+  let html = text;
+
+  // Escape HTML first
+  html = html
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
 
-  // Code blocks
-  safeText = safeText.replace(
-    /```([\s\S]*?)```/g,
-    function(match, code) {
+  // ======================================
+  // CODE BLOCKS
+  // ======================================
+
+  html = html.replace(
+    /```(\w+)?\n?([\s\S]*?)```/g,
+    function(match, language, code) {
+
+      const lang =
+        language || "code";
+
+      const cleanCode =
+        code.trim();
+
+      const encodedCode =
+        encodeURIComponent(cleanCode);
 
       return `
-        <pre class="ai-code">
-          <code>${code.trim()}</code>
-        </pre>
+        <div class="code-wrapper">
+
+          <div class="code-header">
+
+            <span class="code-language">
+              ${lang}
+            </span>
+
+            <button
+              class="copy-code"
+              data-code="${encodedCode}"
+              onclick="copyCode(this)"
+            >
+              Copy
+            </button>
+
+          </div>
+
+          <pre class="ai-code"><code>${cleanCode}</code></pre>
+
+        </div>
       `;
     }
   );
 
 
-  // Bold
-  safeText = safeText.replace(
-    /\*\*(.*?)\*\*/g,
-    "<strong>$1</strong>"
+  // ======================================
+  // INLINE CODE
+  // ======================================
+
+  html = html.replace(
+    /`([^`]+)`/g,
+    "<code class='inline-code'>$1</code>"
   );
 
 
-  // Italic
-  safeText = safeText.replace(
-    /(?<!\*)\*([^*]+)\*(?!\*)/g,
-    "<em>$1</em>"
-  );
+  // ======================================
+  // HEADINGS
+  // ======================================
 
-
-  // Headings
-  safeText = safeText.replace(
+  html = html.replace(
     /^### (.*)$/gm,
     "<h4>$1</h4>"
   );
 
-  safeText = safeText.replace(
+  html = html.replace(
     /^## (.*)$/gm,
     "<h3>$1</h3>"
   );
 
-  safeText = safeText.replace(
+  html = html.replace(
     /^# (.*)$/gm,
     "<h2>$1</h2>"
   );
 
 
-  // Numbered lists
-  safeText = safeText.replace(
+  // ======================================
+  // BOLD
+  // ======================================
+
+  html = html.replace(
+    /\*\*(.*?)\*\*/g,
+    "<strong>$1</strong>"
+  );
+
+
+  // ======================================
+  // ITALIC
+  // ======================================
+
+  html = html.replace(
+    /(?<!\*)\*([^*]+)\*(?!\*)/g,
+    "<em>$1</em>"
+  );
+
+
+  // ======================================
+  // BLOCKQUOTE
+  // ======================================
+
+  html = html.replace(
+    /^>\s?(.*)$/gm,
+    "<blockquote>$1</blockquote>"
+  );
+
+
+  // ======================================
+  // NUMBERED LISTS
+  // ======================================
+
+  html = html.replace(
     /^\s*(\d+)\.\s+(.*)$/gm,
-    "<div class='ai-list-item'><strong>$1.</strong> $2</div>"
+    `
+      <div class="ai-list-item">
+        <span class="list-number">$1.</span>
+        <span>$2</span>
+      </div>
+    `
   );
 
 
-  // Bullet lists
-  safeText = safeText.replace(
+  // ======================================
+  // BULLET LISTS
+  // ======================================
+
+  html = html.replace(
     /^\s*[-•]\s+(.*)$/gm,
-    "<div class='ai-list-item'>• $1</div>"
+    `
+      <div class="ai-list-item">
+        <span class="list-bullet">•</span>
+        <span>$1</span>
+      </div>
+    `
   );
 
 
-  // Line breaks
-  safeText = safeText.replace(
+  // ======================================
+  // LINE BREAKS
+  // ======================================
+
+  html = html.replace(
     /\n\n/g,
     "<br><br>"
   );
 
-  safeText = safeText.replace(
+  html = html.replace(
     /\n/g,
     "<br>"
   );
 
 
-  return safeText;
+  return html;
 }
 
 
@@ -131,10 +212,10 @@ function formatAIResponse(text) {
 
 function addMessage(text, sender) {
 
-  const messageWrapper =
+  const wrapper =
     document.createElement("div");
 
-  messageWrapper.className =
+  wrapper.className =
     sender === "user"
       ? "message user-message"
       : "message ai-message";
@@ -147,22 +228,17 @@ function addMessage(text, sender) {
   const avatar =
     document.createElement("div");
 
-  avatar.className = "avatar";
+  avatar.className =
+    "avatar";
 
-
-  if (sender === "user") {
-
-    avatar.textContent = "You";
-
-  } else {
-
-    avatar.textContent = "GM";
-
-  }
+  avatar.textContent =
+    sender === "user"
+      ? "You"
+      : "GM";
 
 
   // ======================================
-  // MESSAGE CONTENT
+  // CONTENT
   // ======================================
 
   const content =
@@ -185,64 +261,16 @@ function addMessage(text, sender) {
   }
 
 
-  messageWrapper.appendChild(avatar);
+  wrapper.appendChild(avatar);
 
-  messageWrapper.appendChild(content);
-
-  messagesContainer.appendChild(
-    messageWrapper
-  );
-
-
-  scrollToBottom();
-
-  return messageWrapper;
-}
-
-
-// ========================================
-// ADD DEVELOPER CARD
-// ========================================
-
-function addDeveloperCard() {
-
-  const wrapper =
-    document.createElement("div");
-
-  wrapper.className =
-    "developer-card";
-
-
-  wrapper.innerHTML = `
-
-    <img
-      src="${DEVELOPER_IMAGE}"
-      alt="${DEVELOPER_NAME}"
-      class="developer-image"
-    >
-
-    <div class="developer-info">
-
-      <strong>
-        ${DEVELOPER_NAME}
-      </strong>
-
-      <span>
-        Developer of GlobalMedia AI
-      </span>
-
-      <small>
-        GlobalMedia Development
-      </small>
-
-    </div>
-
-  `;
-
+  wrapper.appendChild(content);
 
   messagesContainer.appendChild(wrapper);
 
+
   scrollToBottom();
+
+  return wrapper;
 }
 
 
@@ -256,15 +284,17 @@ function showTyping() {
     document.createElement("div");
 
   wrapper.className =
-    "message ai-message typing-message";
+    "message ai-message";
 
 
   const avatar =
     document.createElement("div");
 
-  avatar.className = "avatar";
+  avatar.className =
+    "avatar";
 
-  avatar.textContent = "GM";
+  avatar.textContent =
+    "GM";
 
 
   const content =
@@ -294,6 +324,55 @@ function showTyping() {
 
 
 // ========================================
+// COPY CODE
+// ========================================
+
+window.copyCode = async function(button) {
+
+  try {
+
+    const encoded =
+      button.getAttribute("data-code");
+
+    const code =
+      decodeURIComponent(encoded);
+
+
+    await navigator.clipboard.writeText(code);
+
+
+    const originalText =
+      button.textContent;
+
+
+    button.textContent =
+      "Copied ✓";
+
+
+    setTimeout(() => {
+
+      button.textContent =
+        originalText;
+
+    }, 2000);
+
+
+  } catch (error) {
+
+    console.error(
+      "Copy failed:",
+      error
+    );
+
+    button.textContent =
+      "Failed";
+
+  }
+
+};
+
+
+// ========================================
 // SCROLL
 // ========================================
 
@@ -320,24 +399,22 @@ async function sendMessage() {
   }
 
 
-  // Disable controls
-  messageInput.disabled = true;
+  messageInput.disabled =
+    true;
 
-  sendButton.disabled = true;
+  sendButton.disabled =
+    true;
 
 
-  // Show user message
   addMessage(
     message,
     "user"
   );
 
 
-  // Clear input
   messageInput.value = "";
 
 
-  // Show typing
   const typingMessage =
     showTyping();
 
@@ -357,7 +434,8 @@ async function sendMessage() {
 
           body: JSON.stringify({
 
-            message: message,
+            message:
+              message,
 
             history:
               conversationHistory
@@ -372,7 +450,6 @@ async function sendMessage() {
       await response.json();
 
 
-    // Remove typing
     typingMessage.remove();
 
 
@@ -390,7 +467,6 @@ async function sendMessage() {
       data.reply;
 
 
-    // Display response
     addMessage(
       aiReply,
       "ai"
@@ -402,7 +478,8 @@ async function sendMessage() {
 
       role: "user",
 
-      text: message
+      text:
+        message
 
     });
 
@@ -411,7 +488,8 @@ async function sendMessage() {
 
       role: "model",
 
-      text: aiReply
+      text:
+        aiReply
 
     });
 
@@ -419,7 +497,7 @@ async function sendMessage() {
   } catch (error) {
 
     console.error(
-      "GlobalMedia AI Error:",
+      "GlobalMedia AI:",
       error
     );
 
@@ -428,17 +506,18 @@ async function sendMessage() {
 
 
     addMessage(
-      "I'm sorry, I couldn't connect to the AI service right now. Please try again.",
+      "Sorry, I couldn't connect to GlobalMedia AI right now. Please try again.",
       "ai"
     );
 
   }
 
 
-  // Re-enable controls
-  messageInput.disabled = false;
+  messageInput.disabled =
+    false;
 
-  sendButton.disabled = false;
+  sendButton.disabled =
+    false;
 
   messageInput.focus();
 
@@ -530,4 +609,4 @@ if (newChatButton) {
     }
   );
 
-  }
+}
