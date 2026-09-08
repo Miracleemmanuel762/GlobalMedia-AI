@@ -1,5 +1,3 @@
-}
-
 // ========================================
 // GLOBALMEDIA AI
 // FIXED GPT-STYLE RESPONSE SYSTEM
@@ -31,7 +29,7 @@ const sendButton =
   document.getElementById("sendButton");
 
 const newChatButton =
-  document.getElementById("newChatButton");
+  document.getElementById("newChat");
 
 
 // ========================================
