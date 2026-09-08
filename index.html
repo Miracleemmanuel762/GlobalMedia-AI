@@ -3,53 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#ffffff">
+
     <title>GlobalMedia AI</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<header class="header">
-    <div class="brand">
-        <div class="brand-icon">GM</div>
-        <div>
-            <h1>GlobalMedia AI</h1>
-            <span>AI Assistant</span>
-        </div>
-    </div>
+<div class="app">
 
-    <button id="newChat">+ New Chat</button>
-</header>
+    <!-- ============================= -->
+    <!-- HEADER -->
+    <!-- ============================= -->
 
-<main class="chat-container">
-    <div id="messages" class="messages">
+    <header class="header">
 
-        <div class="welcome">
-            <div class="welcome-icon">GM</div>
-            <h2>Welcome to GlobalMedia AI</h2>
-            <p>
-                Ask questions, learn new things, generate ideas,
-                write content, or simply have a conversation.
-            </p>
+        <div class="brand">
+
+            <div class="brand-icon">
+                GM
+            </div>
+
+            <div class="brand-info">
+                <h1>GlobalMedia AI</h1>
+                <span>AI Assistant</span>
+            </div>
+
         </div>
 
-    </div>
 
-    <div class="input-area">
-        <div class="input-box">
-            <textarea
-                id="messageInput"
-                placeholder="Message GlobalMedia AI..."
-                rows="1"></textarea>
+        <div class="header-actions">
 
-            <button id="sendButton">➤</button>
+            <button
+                id="themeButton"
+                class="header-button"
+                type="button"
+                title="Toggle theme"
+                aria-label="Toggle theme">
+                ☾
+            </button>
+
+            <button
+                id="newChat"
+                class="new-chat-button"
+                type="button">
+                <span>＋</span>
+                <span>New Chat</span>
+            </button>
+
         </div>
 
-        <p class="disclaimer">
-            GlobalMedia AI can make mistakes. Always verify important information.
-        </p>
-    </div>
-</main>
+    </header>
+
+
+    <!-- ============================= -->
+    <!-- CHAT -->
+    <!-- ============================= -->
+
+    <main class="chat-container">
+
+        <div id="messages" class="messages">
+
+            <!-- Welcome screen -->
+
+            <div class="welcome">
+
+                <div class="welcome-icon">
+                    GM
+                </div>
+
+                <h2>
+                    Welcome to GlobalMedia AI
+                </h2>
+
+                <p>
+                    Ask questions, learn new things,
+                    generate ideas, write content,
+                    write code, or simply have a conversation.
+                </p>
+
+
+                <div class="suggestions">
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-prompt="Explain HTML to me like I am a complete beginner.">
+                        <span>💡</span>
+                        <span>Learn something</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-prompt="Create a simple professional HTML webpage for a beginner.">
+                        <span>💻</span>
+                        <span>Write some code</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-prompt="Give me three powerful ideas for improving myself.">
+                        <span>✨</span>
+                        <span>Get ideas</span>
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============================= -->
+        <!-- INPUT AREA -->
+        <!-- ============================= -->
+
+        <div class="input-area">
+
+            <div class="input-box">
+
+                <button
+                    id="voiceButton"
+                    class="input-action"
+                    type="button"
+                    title="Voice input"
+                    aria-label="Voice input">
+                    🎙
+                </button>
+
+
+                <textarea
+                    id="messageInput"
+                    placeholder="Message GlobalMedia AI..."
+                    rows="1"
+                    autocomplete="off"></textarea>
+
+
+                <button
+                    id="sendButton"
+                    class="send-button"
+                    type="button"
+                    aria-label="Send message">
+                    ➤
+                </button>
+
+            </div>
+
+
+            <div class="input-bottom">
+
+                <p class="disclaimer">
+                    GlobalMedia AI can make mistakes.
+                    Always verify important information.
+                </p>
+
+                <span id="voiceStatus" class="voice-status"></span>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
 
 <script src="script.js"></script>
+
 </body>
-</html>
+        </html>
