@@ -1,11 +1,10 @@
 // ========================================
 // GLOBALMEDIA AI
-// FRONTEND UPGRADE V2
+// FRONTEND SCRIPT V2
 // ========================================
 
-
 // ========================================
-// DEVELOPER
+// CONFIGURATION
 // ========================================
 
 const DEVELOPER_NAME = "Miracle Emmanuel";
@@ -56,12 +55,16 @@ let isListening = false;
 
 
 // ========================================
-// HTML ESCAPE
+// ESCAPE HTML
 // ========================================
 
 function escapeHTML(text) {
 
-    return String(text || "")
+    if (text === null || text === undefined) {
+        return "";
+    }
+
+    return String(text)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -76,250 +79,189 @@ function escapeHTML(text) {
 
 function formatAIResponse(text) {
 
-    let html = String(text || "");
+    if (!text) {
+        return "";
+    }
+
+    let workingText = String(text);
 
     const codeBlocks = [];
 
-    /*
-        IMPORTANT:
+    // ------------------------------------
+    // Extract fenced code blocks first
+    // ------------------------------------
 
-        Code blocks are extracted BEFORE
-        normal Markdown formatting.
-
-        This prevents <html>, <body>,
-        CSS and JavaScript from being
-        interpreted as actual HTML.
-    */
-
-    html = html.replace(
-        /```([a-zA-Z0-9_+#.-]*)[ \t]*\r?\n?([\s\S]*?)```/g,
-        function(match, language, code) {
+    workingText = workingText.replace(
+        /```([\w#+.-]*)\n?([\s\S]*?)```/g,
+        function (_, language, code) {
 
             const index = codeBlocks.length;
 
-            let cleanCode = code
-                .replace(/\r\n/g, "\n")
-                .replace(/\r/g, "\n");
-
-            /*
-                Remove only the first and last
-                accidental blank line.
-            */
-
-            cleanCode = cleanCode
-                .replace(/^\n/, "")
-                .replace(/\n$/, "");
-
             codeBlocks.push({
-
-                language:
-                    language ||
-                    "code",
-
-                code:
-                    cleanCode
-
+                language: language || "code",
+                code: code.replace(/^\n+|\n+$/g, "")
             });
 
-            return `___GLOBALMEDIA_CODE_${index}___`;
+            return `___GLOBALMEDIA_CODE_BLOCK_${index}___`;
         }
     );
 
 
-    /*
-        Escape normal AI text.
+    // ------------------------------------
+    // Escape normal text
+    // ------------------------------------
 
-        Code blocks have already been
-        replaced with placeholders.
-    */
-
-    html = escapeHTML(html);
+    workingText = escapeHTML(workingText);
 
 
-    // ====================================
-    // HEADINGS
-    // ====================================
+    // ------------------------------------
+    // Headings
+    // ------------------------------------
 
-    html = html.replace(
-        /^###\s+(.*)$/gm,
+    workingText = workingText.replace(
+        /^### (.+)$/gm,
         "<h4>$1</h4>"
     );
 
-    html = html.replace(
-        /^##\s+(.*)$/gm,
+    workingText = workingText.replace(
+        /^## (.+)$/gm,
         "<h3>$1</h3>"
     );
 
-    html = html.replace(
-        /^#\s+(.*)$/gm,
+    workingText = workingText.replace(
+        /^# (.+)$/gm,
         "<h2>$1</h2>"
     );
 
 
-    // ====================================
-    // BOLD
-    // ====================================
+    // ------------------------------------
+    // Bold
+    // ------------------------------------
 
-    html = html.replace(
-        /\*\*(.*?)\*\*/g,
+    workingText = workingText.replace(
+        /\*\*(.+?)\*\*/g,
         "<strong>$1</strong>"
     );
 
 
-    // ====================================
-    // ITALIC
-    // ====================================
+    // ------------------------------------
+    // Italic
+    // ------------------------------------
 
-    html = html.replace(
-        /(?<!\*)\*([^*\n]+)\*(?!\*)/g,
-        "<em>$1</em>"
+    workingText = workingText.replace(
+        /(^|[^\*])\*([^*\n]+)\*(?!\*)/g,
+        "$1<em>$2</em>"
     );
 
 
-    // ====================================
-    // INLINE CODE
-    // ====================================
+    // ------------------------------------
+    // Inline code
+    // ------------------------------------
 
-    html = html.replace(
+    workingText = workingText.replace(
         /`([^`\n]+)`/g,
-        '<code class="inline-code">$1</code>'
+        '<span class="inline-code">$1</span>'
     );
 
 
-    // ====================================
-    // BLOCKQUOTE
-    // ====================================
+    // ------------------------------------
+    // Blockquotes
+    // ------------------------------------
 
-    html = html.replace(
-        /^>\s?(.*)$/gm,
-        "<blockquote>$1</blockquote>"
+    workingText = workingText.replace(
+        /^&gt; (.+)$/gm,
+        '<blockquote>$1</blockquote>'
     );
 
 
-    // ====================================
-    // NUMBERED LIST
-    // ====================================
+    // ------------------------------------
+    // Numbered lists
+    // ------------------------------------
 
-    html = html.replace(
-        /^\s*(\d+)\.\s+(.*)$/gm,
-        `
-        <div class="ai-list-item">
-            <span class="list-number">$1.</span>
-            <span>$2</span>
-        </div>
-        `
+    workingText = workingText.replace(
+        /^(\d+)\.\s+(.+)$/gm,
+        '<div class="ai-list-item"><span class="list-number">$1.</span><span>$2</span></div>'
     );
 
 
-    // ====================================
-    // BULLET LIST
-    // ====================================
+    // ------------------------------------
+    // Bullet lists
+    // ------------------------------------
 
-    html = html.replace(
-        /^\s*[-•*]\s+(.*)$/gm,
-        `
-        <div class="ai-list-item">
-            <span class="list-bullet">•</span>
-            <span>$1</span>
-        </div>
-        `
+    workingText = workingText.replace(
+        /^[•*-]\s+(.+)$/gm,
+        '<div class="ai-list-item"><span class="list-bullet">•</span><span>$1</span></div>'
     );
 
 
-    // ====================================
-    // LINE BREAKS
-    // ====================================
+    // ------------------------------------
+    // Line breaks
+    // ------------------------------------
 
-    html = html.replace(
-        /\n\n/g,
-        "<br><br>"
-    );
-
-    html = html.replace(
+    workingText = workingText.replace(
         /\n/g,
         "<br>"
     );
 
 
-    // ====================================
-    // RESTORE CODE BLOCKS
-    // ====================================
+    // ------------------------------------
+    // Restore code blocks
+    // ------------------------------------
 
-    codeBlocks.forEach(
-        function(block, index) {
+    codeBlocks.forEach(function (block, index) {
 
-            const placeholder =
-                `___GLOBALMEDIA_CODE_${index}___`;
+        const placeholder =
+            `___GLOBALMEDIA_CODE_BLOCK_${index}___`;
 
-            /*
-                We escape code for safe HTML,
-                but the browser will display
-                it as:
+        const safeLanguage =
+            escapeHTML(block.language);
 
-                <html>
+        const safeCode =
+            escapeHTML(block.code);
 
-                NOT:
+        const codeHTML = `
+            <div class="code-wrapper">
 
-                &lt;html&gt;
+                <div class="code-header">
 
-                because textContent is used
-                inside the <code> element.
-            */
+                    <span class="code-language">
+                        ${safeLanguage}
+                    </span>
 
-            const codeId =
-                "gm-code-" +
-                Date.now() +
-                "-" +
-                index;
+                    <div class="code-actions">
 
-            const codeHTML = `
-                <div class="code-wrapper">
+                        <button
+                            type="button"
+                            class="copy-code"
+                            title="Copy code">
+                            Copy
+                        </button>
 
-                    <div class="code-header">
-
-                        <span class="code-language">
-                            ${escapeHTML(block.language)}
-                        </span>
-
-                        <div class="code-actions">
-
-                            <button
-                                type="button"
-                                class="copy-code"
-                                data-code-id="${codeId}">
-                                Copy
-                            </button>
-
-                            <button
-                                type="button"
-                                class="download-code"
-                                data-code-id="${codeId}">
-                                Download
-                            </button>
-
-                        </div>
+                        <button
+                            type="button"
+                            class="download-code"
+                            title="Download code">
+                            Download
+                        </button>
 
                     </div>
 
-                    <pre class="ai-code"><code id="${codeId}"></code></pre>
-
                 </div>
-            `;
 
-            html =
-                html.replace(
-                    placeholder,
-                    codeHTML
-                );
+                <pre class="ai-code"><code>${safeCode}</code></pre>
 
-        }
-    );
+            </div>
+        `;
+
+        workingText =
+            workingText.replace(
+                placeholder,
+                codeHTML
+            );
+    });
 
 
-    return {
-        html: html,
-        codeBlocks: codeBlocks
-    };
+    return workingText;
 }
 
 
@@ -327,40 +269,34 @@ function formatAIResponse(text) {
 // ADD MESSAGE
 // ========================================
 
-function addMessage(
-    text,
-    sender,
-    options = {}
-) {
+function addMessage(role, text) {
 
-    const wrapper =
+    const message =
         document.createElement("div");
 
-    wrapper.className =
-        sender === "user"
-            ? "message user-message"
-            : "message ai-message";
-
-
-    // ====================================
-    // AVATAR
-    // ====================================
+    message.className =
+        `message ${role}-message`;
 
     const avatar =
         document.createElement("div");
 
-    avatar.className =
-        "avatar";
-
-    avatar.textContent =
-        sender === "user"
-            ? "You"
-            : "GM";
+    avatar.className = "avatar";
 
 
-    // ====================================
-    // CONTENT
-    // ====================================
+    // ------------------------------------
+    // AI avatar
+    // ------------------------------------
+
+    if (role === "ai") {
+
+        avatar.textContent = "GM";
+
+    } else {
+
+        avatar.textContent = "You";
+
+    }
+
 
     const content =
         document.createElement("div");
@@ -369,71 +305,19 @@ function addMessage(
         "message-content";
 
 
-    if (sender === "ai") {
+    // ------------------------------------
+    // AI message
+    // ------------------------------------
 
-        const formatted =
-            formatAIResponse(text);
+    if (role === "ai") {
 
         content.innerHTML =
-            formatted.html;
-
-        /*
-            Put actual code into code elements
-            using textContent.
-
-            This is the important fix for:
-
-            &lt;html&gt;
-
-            becoming:
-
-            <html>
-        */
-
-        formatted.codeBlocks.forEach(
-            function(block, index) {
-
-                const codeId =
-                    content.querySelector(
-                        `.code-wrapper:nth-of-type(${index + 1}) code`
-                    );
-
-                /*
-                    Safer lookup using all code blocks.
-                */
-
-                const allCode =
-                    content.querySelectorAll(
-                        ".ai-code code"
-                    );
-
-                if (allCode[index]) {
-
-                    allCode[index].textContent =
-                        block.code;
-                }
-
-            }
-        );
-
-    } else {
-
-        content.textContent =
-            text;
-
-    }
+            formatAIResponse(text);
 
 
-    wrapper.appendChild(avatar);
-
-    wrapper.appendChild(content);
-
-
-    // ====================================
-    // MESSAGE ACTIONS
-    // ====================================
-
-    if (sender === "ai" && options.actions !== false) {
+        // --------------------------------
+        // AI actions
+        // --------------------------------
 
         const actions =
             document.createElement("div");
@@ -442,26 +326,54 @@ function addMessage(
             "message-actions";
 
         actions.innerHTML = `
-
             <button
                 type="button"
-                class="message-copy">
+                class="copy-response"
+                title="Copy response">
                 Copy
             </button>
 
             <button
                 type="button"
-                class="message-regenerate">
+                class="regenerate-response"
+                title="Regenerate response">
                 Regenerate
             </button>
-
         `;
 
         content.appendChild(actions);
+
+
+        // --------------------------------
+        // Ensure code is actual text
+        // --------------------------------
+
+        content
+            .querySelectorAll(".ai-code code")
+            .forEach(function (codeElement) {
+
+                const html =
+                    codeElement.innerHTML;
+
+                const temporary =
+                    document.createElement("textarea");
+
+                temporary.innerHTML = html;
+
+                codeElement.textContent =
+                    temporary.value;
+            });
+
     }
 
 
-    if (sender === "user" && options.actions !== false) {
+    // ------------------------------------
+    // User message
+    // ------------------------------------
+
+    else {
+
+        content.textContent = text;
 
         const actions =
             document.createElement("div");
@@ -470,24 +382,31 @@ function addMessage(
             "message-actions";
 
         actions.innerHTML = `
-
             <button
                 type="button"
-                class="message-edit">
+                class="edit-message"
+                title="Edit message">
                 Edit
             </button>
-
         `;
 
         content.appendChild(actions);
     }
 
 
-    messagesContainer.appendChild(wrapper);
+    // ------------------------------------
+    // Build message
+    // ------------------------------------
+
+    message.appendChild(avatar);
+
+    message.appendChild(content);
+
+    messagesContainer.appendChild(message);
 
     scrollToBottom();
 
-    return wrapper;
+    return message;
 }
 
 
@@ -497,53 +416,33 @@ function addMessage(
 
 function showTyping() {
 
-    const wrapper =
+    const message =
         document.createElement("div");
 
-    wrapper.className =
-        "message ai-message";
+    message.className =
+        "message ai-message typing-message";
 
+    message.innerHTML = `
+        <div class="avatar">GM</div>
 
-    const avatar =
-        document.createElement("div");
+        <div class="message-content">
 
-    avatar.className =
-        "avatar";
+            <div class="typing-indicator">
 
-    avatar.textContent =
-        "GM";
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
 
-
-    const content =
-        document.createElement("div");
-
-    content.className =
-        "message-content";
-
-
-    content.innerHTML = `
-
-        <div class="typing-indicator">
-
-            <span class="typing-dot"></span>
-            <span class="typing-dot"></span>
-            <span class="typing-dot"></span>
+            </div>
 
         </div>
-
     `;
 
-
-    wrapper.appendChild(avatar);
-
-    wrapper.appendChild(content);
-
-    messagesContainer.appendChild(wrapper);
+    messagesContainer.appendChild(message);
 
     scrollToBottom();
 
-
-    return wrapper;
+    return message;
 }
 
 
@@ -553,40 +452,34 @@ function showTyping() {
 
 function scrollToBottom() {
 
-    setTimeout(
-        function() {
+    requestAnimationFrame(function () {
 
-            messagesContainer.scrollTop =
-                messagesContainer.scrollHeight;
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth"
+        });
 
-        },
-        20
-    );
-
+    });
 }
 
 
 // ========================================
-// AUTO RESIZE TEXTAREA
+// TEXTAREA RESIZE
 // ========================================
 
 function resizeTextarea() {
 
-    messageInput.style.height =
-        "auto";
+    messageInput.style.height = "auto";
 
-    messageInput.style.height =
+    const newHeight =
         Math.min(
             messageInput.scrollHeight,
             180
-        ) + "px";
+        );
+
+    messageInput.style.height =
+        newHeight + "px";
 }
-
-
-messageInput.addEventListener(
-    "input",
-    resizeTextarea
-);
 
 
 // ========================================
@@ -602,7 +495,7 @@ async function sendMessage(customMessage = null) {
 
     const message =
         customMessage !== null
-            ? customMessage.trim()
+            ? String(customMessage).trim()
             : messageInput.value.trim();
 
 
@@ -611,29 +504,53 @@ async function sendMessage(customMessage = null) {
     }
 
 
-    isGenerating = true;
+    // ------------------------------------
+    // Save message
+    // ------------------------------------
 
     lastUserMessage = message;
 
 
-    messageInput.disabled =
-        true;
+    // ------------------------------------
+    // Clear input
+    // ------------------------------------
 
-    sendButton.disabled =
-        true;
-
-
-    addMessage(
-        message,
-        "user"
-    );
-
-
-    messageInput.value =
-        "";
+    messageInput.value = "";
 
     resizeTextarea();
 
+
+    // ------------------------------------
+    // Add user message
+    // ------------------------------------
+
+    addMessage(
+        "user",
+        message
+    );
+
+
+    // ------------------------------------
+    // Add to conversation
+    // ------------------------------------
+
+    conversationHistory.push({
+        role: "user",
+        parts: [
+            {
+                text: message
+            }
+        ]
+    });
+
+
+    // ------------------------------------
+    // Loading state
+    // ------------------------------------
+
+    isGenerating = true;
+
+    sendButton.disabled = true;
 
     const typingMessage =
         showTyping();
@@ -652,88 +569,88 @@ async function sendMessage(customMessage = null) {
                             "application/json"
                     },
 
-                    body:
-                        JSON.stringify({
-
-                            message:
-                                message,
-
-                            history:
-                                conversationHistory
-
-                        })
-
+                    body: JSON.stringify({
+                        message: message,
+                        history:
+                            conversationHistory
+                    })
                 }
             );
 
 
-        let data;
+        let data = null;
 
         try {
 
-            data =
-                await response.json();
+            data = await response.json();
 
-        } catch {
+        } catch (jsonError) {
 
             throw new Error(
                 "The server returned an invalid response."
             );
-
         }
 
 
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "Something went wrong."
-            );
-
-        }
-
-
-        const aiReply =
-            data.reply;
-
-
-        if (!aiReply) {
-
-            throw new Error(
-                "GlobalMedia AI returned an empty response."
-            );
-
-        }
-
+        // --------------------------------
+        // Remove typing indicator
+        // --------------------------------
 
         typingMessage.remove();
 
 
+        // --------------------------------
+        // Server error
+        // --------------------------------
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.error ||
+                `Request failed with status ${response.status}.`
+            );
+        }
+
+
+        // --------------------------------
+        // Get AI response
+        // --------------------------------
+
+        const aiText =
+            data?.reply ||
+            data?.text ||
+            data?.response;
+
+
+        if (!aiText) {
+
+            throw new Error(
+                "GlobalMedia AI returned an empty response."
+            );
+        }
+
+
+        // --------------------------------
+        // Add AI message
+        // --------------------------------
+
         addMessage(
-            aiReply,
-            "ai"
+            "ai",
+            aiText
         );
 
 
-        // =================================
-        // SAVE HISTORY
-        // =================================
+        // --------------------------------
+        // Save AI response
+        // --------------------------------
 
         conversationHistory.push({
-
-            role: "user",
-
-            text: message
-
-        });
-
-
-        conversationHistory.push({
-
             role: "model",
-
-            text: aiReply
-
+            parts: [
+                {
+                    text: aiText
+                }
+            ]
         });
 
 
@@ -745,32 +662,39 @@ async function sendMessage(customMessage = null) {
         );
 
 
-        if (typingMessage) {
-
+        if (
+            typingMessage &&
+            typingMessage.parentNode
+        ) {
             typingMessage.remove();
+        }
 
+
+        let errorMessage =
+            "Sorry, something went wrong while connecting to GlobalMedia AI.";
+
+
+        if (error.message) {
+
+            errorMessage =
+                error.message;
         }
 
 
         addMessage(
-            "Sorry, I couldn't connect to GlobalMedia AI right now. Please try again.",
-            "ai"
+            "ai",
+            `**Error**\n\n${errorMessage}\n\nPlease try again.`
         );
 
+    } finally {
+
+        isGenerating = false;
+
+        sendButton.disabled = false;
+
+        messageInput.focus();
+
     }
-
-
-    isGenerating =
-        false;
-
-    messageInput.disabled =
-        false;
-
-    sendButton.disabled =
-        false;
-
-    messageInput.focus();
-
 }
 
 
@@ -778,45 +702,51 @@ async function sendMessage(customMessage = null) {
 // SEND BUTTON
 // ========================================
 
-if (sendButton) {
+sendButton.addEventListener(
+    "click",
+    function () {
 
-    sendButton.addEventListener(
-        "click",
-        function() {
+        sendMessage();
 
-            sendMessage();
-
-        }
-    );
-
-}
+    }
+);
 
 
 // ========================================
 // ENTER TO SEND
 // ========================================
 
-if (messageInput) {
+messageInput.addEventListener(
+    "keydown",
+    function (event) {
 
-    messageInput.addEventListener(
-        "keydown",
-        function(event) {
+        if (
+            event.key === "Enter" &&
+            !event.shiftKey
+        ) {
 
-            if (
-                event.key === "Enter" &&
-                !event.shiftKey
-            ) {
+            event.preventDefault();
 
-                event.preventDefault();
-
-                sendMessage();
-
-            }
+            sendMessage();
 
         }
-    );
 
-}
+    }
+);
+
+
+// ========================================
+// TEXTAREA INPUT
+// ========================================
+
+messageInput.addEventListener(
+    "input",
+    function () {
+
+        resizeTextarea();
+
+    }
+);
 
 
 // ========================================
@@ -825,7 +755,7 @@ if (messageInput) {
 
 document.addEventListener(
     "click",
-    function(event) {
+    function (event) {
 
         const suggestion =
             event.target.closest(
@@ -839,9 +769,7 @@ document.addEventListener(
 
 
         const prompt =
-            suggestion.getAttribute(
-                "data-prompt"
-            );
+            suggestion.dataset.prompt;
 
 
         if (!prompt) {
@@ -849,12 +777,180 @@ document.addEventListener(
         }
 
 
-        messageInput.value =
-            prompt;
+        sendMessage(prompt);
+
+    }
+);
+
+
+// ========================================
+// NEW CHAT
+// ========================================
+
+newChatButton.addEventListener(
+    "click",
+    function () {
+
+        if (isGenerating) {
+            return;
+        }
+
+
+        conversationHistory = [];
+
+        lastUserMessage = "";
+
+
+        messagesContainer.innerHTML = `
+            <div class="welcome">
+
+                <div class="welcome-icon">
+                    GM
+                </div>
+
+                <h2>
+                    Welcome to GlobalMedia AI
+                </h2>
+
+                <p>
+                    Ask questions, learn new things,
+                    generate ideas, write content,
+                    write code, or simply have a conversation.
+                </p>
+
+                <div class="suggestions">
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-prompt="Explain HTML to me like I am a complete beginner.">
+
+                        <span>💡</span>
+                        <span>Learn something</span>
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-prompt="Create a simple professional HTML webpage for a beginner.">
+
+                        <span>💻</span>
+                        <span>Write some code</span>
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="suggestion"
+                        data-prompt="Give me three powerful ideas for improving myself.">
+
+                        <span>✨</span>
+                        <span>Get ideas</span>
+
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+
+        messageInput.value = "";
 
         resizeTextarea();
 
-        sendMessage();
+        messageInput.focus();
+
+    }
+);
+
+
+// ========================================
+// THEME
+// ========================================
+
+function updateThemeButton() {
+
+    const dark =
+        document.body.classList.contains(
+            "dark"
+        );
+
+
+    themeButton.textContent =
+        dark ? "☀" : "☾";
+
+
+    themeButton.setAttribute(
+        "aria-label",
+        dark
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+    );
+
+
+    themeButton.setAttribute(
+        "title",
+        dark
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+    );
+}
+
+
+// ----------------------------------------
+// Load saved theme
+// ----------------------------------------
+
+const savedTheme =
+    localStorage.getItem(
+        "globalmedia-ai-theme"
+    );
+
+
+if (savedTheme === "dark") {
+
+    document.body.classList.add(
+        "dark"
+    );
+
+}
+
+
+updateThemeButton();
+
+
+// ----------------------------------------
+// Theme button
+// ----------------------------------------
+
+themeButton.addEventListener(
+    "click",
+    function () {
+
+        document.body.classList.toggle(
+            "dark"
+        );
+
+
+        const dark =
+            document.body.classList.contains(
+                "dark"
+            );
+
+
+        localStorage.setItem(
+            "globalmedia-ai-theme",
+            dark
+                ? "dark"
+                : "light"
+        );
+
+
+        updateThemeButton();
 
     }
 );
@@ -866,24 +962,24 @@ document.addEventListener(
 
 async function copyCode(button) {
 
-    const codeId =
-        button.getAttribute(
-            "data-code-id"
+    const wrapper =
+        button.closest(
+            ".code-wrapper"
         );
 
 
+    if (!wrapper) {
+        return;
+    }
+
+
     const codeElement =
-        document.getElementById(
-            codeId
+        wrapper.querySelector(
+            "code"
         );
 
 
     if (!codeElement) {
-
-        console.error(
-            "Code element not found."
-        );
-
         return;
     }
 
@@ -892,67 +988,35 @@ async function copyCode(button) {
         codeElement.textContent;
 
 
-    const oldText =
-        button.textContent;
-
-
     try {
 
-        if (
-            navigator.clipboard &&
-            window.isSecureContext
-        ) {
+        await navigator.clipboard.writeText(
+            code
+        );
 
-            await navigator.clipboard.writeText(
-                code
-            );
-
-        } else {
-
-            fallbackCopy(code);
-
-        }
-
+        const original =
+            button.textContent;
 
         button.textContent =
-            "Copied ✓";
+            "Copied!";
+
+
+        setTimeout(
+            function () {
+
+                button.textContent =
+                    original;
+
+            },
+            1500
+        );
 
 
     } catch (error) {
 
-        console.error(
-            "Clipboard error:",
-            error
-        );
-
-
-        try {
-
-            fallbackCopy(code);
-
-            button.textContent =
-                "Copied ✓";
-
-        } catch {
-
-            button.textContent =
-                "Copy failed";
-
-        }
+        fallbackCopy(code, button);
 
     }
-
-
-    setTimeout(
-        function() {
-
-            button.textContent =
-                oldText;
-
-        },
-        2000
-    );
-
 }
 
 
@@ -960,26 +1024,26 @@ async function copyCode(button) {
 // FALLBACK COPY
 // ========================================
 
-function fallbackCopy(text) {
+function fallbackCopy(
+    text,
+    button = null
+) {
 
     const textarea =
-        document.createElement(
+                document.createElement(
             "textarea"
         );
 
-    textarea.value =
-        text;
+
+    textarea.value = text;
 
     textarea.style.position =
         "fixed";
 
-    textarea.style.top =
-        "0";
-
     textarea.style.left =
         "-9999px";
 
-    textarea.style.opacity =
+    textarea.style.top =
         "0";
 
 
@@ -993,23 +1057,45 @@ function fallbackCopy(text) {
     textarea.select();
 
 
-    const successful =
+    try {
+
         document.execCommand(
             "copy"
         );
 
 
-    textarea.remove();
+        if (button) {
+
+            const original =
+                button.textContent;
+
+            button.textContent =
+                "Copied!";
 
 
-    if (!successful) {
+            setTimeout(
+                function () {
 
-        throw new Error(
-            "Copy command failed."
+                    button.textContent =
+                        original;
+
+                },
+                1500
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Copy failed:",
+            error
         );
 
     }
 
+
+    textarea.remove();
 }
 
 
@@ -1019,15 +1105,20 @@ function fallbackCopy(text) {
 
 function downloadCode(button) {
 
-    const codeId =
-        button.getAttribute(
-            "data-code-id"
+    const wrapper =
+        button.closest(
+            ".code-wrapper"
         );
 
 
+    if (!wrapper) {
+        return;
+    }
+
+
     const codeElement =
-        document.getElementById(
-            codeId
+        wrapper.querySelector(
+            "code"
         );
 
 
@@ -1040,21 +1131,18 @@ function downloadCode(button) {
         codeElement.textContent;
 
 
-    const wrapper =
-        button.closest(
-            ".code-wrapper"
+    const languageElement =
+        wrapper.querySelector(
+            ".code-language"
         );
 
 
     const language =
-        wrapper
-            ?.querySelector(
-                ".code-language"
-            )
-            ?.textContent
-            ?.trim()
-            .toLowerCase() ||
-        "txt";
+        languageElement
+            ? languageElement.textContent
+                .trim()
+                .toLowerCase()
+            : "code";
 
 
     const extensions = {
@@ -1064,31 +1152,29 @@ function downloadCode(button) {
 
         css: "css",
 
-        javascript: "js",
         js: "js",
-
-        typescript: "ts",
-        ts: "ts",
-
-        python: "py",
-
-        php: "php",
-
-        java: "java",
+        javascript: "js",
 
         json: "json",
 
         xml: "xml",
 
+        php: "php",
+
+        py: "py",
+        python: "py",
+
+        java: "java",
+
+        c: "c",
+
+        cpp: "cpp",
+        "c++": "cpp",
+
         sql: "sql",
 
-        bash: "sh",
-        shell: "sh",
-
-        text: "txt",
         txt: "txt",
-
-        code: "txt"
+        text: "txt"
 
     };
 
@@ -1120,12 +1206,10 @@ function downloadCode(button) {
         );
 
 
-    link.href =
-        url;
-
+    link.href = url;
 
     link.download =
-        `globalmedia-ai-code.${extension}`;
+        `globalmedia-code.${extension}`;
 
 
     document.body.appendChild(
@@ -1141,7 +1225,6 @@ function downloadCode(button) {
     URL.revokeObjectURL(
         url
     );
-
 }
 
 
@@ -1151,11 +1234,12 @@ function downloadCode(button) {
 
 document.addEventListener(
     "click",
-    async function(event) {
+    async function (event) {
 
-        // ---------------------------------
+
+        // --------------------------------
         // COPY CODE
-        // ---------------------------------
+        // --------------------------------
 
         const copyCodeButton =
             event.target.closest(
@@ -1170,5 +1254,620 @@ document.addEventListener(
             );
 
             return;
+        }
 
-   
+
+        // --------------------------------
+        // DOWNLOAD CODE
+        // --------------------------------
+
+        const downloadButton =
+            event.target.closest(
+                ".download-code"
+            );
+
+
+        if (downloadButton) {
+
+            downloadCode(
+                downloadButton
+            );
+
+            return;
+        }
+
+
+        // --------------------------------
+        // COPY AI RESPONSE
+        // --------------------------------
+
+        const copyResponseButton =
+            event.target.closest(
+                ".copy-response"
+            );
+
+
+        if (copyResponseButton) {
+
+            const content =
+                copyResponseButton.closest(
+                    ".message-content"
+                );
+
+
+            if (!content) {
+                return;
+            }
+
+
+            const clone =
+                content.cloneNode(
+                    true
+                );
+
+
+            const actions =
+                clone.querySelector(
+                    ".message-actions"
+                );
+
+
+            if (actions) {
+                actions.remove();
+            }
+
+
+            const text =
+                clone.innerText.trim();
+
+
+            try {
+
+                await navigator.clipboard.writeText(
+                    text
+                );
+
+
+                const original =
+                    copyResponseButton.textContent;
+
+
+                copyResponseButton.textContent =
+                    "Copied!";
+
+
+                setTimeout(
+                    function () {
+
+                        copyResponseButton.textContent =
+                            original;
+
+                    },
+                    1500
+                );
+
+
+            } catch (error) {
+
+                fallbackCopy(
+                    text,
+                    copyResponseButton
+                );
+
+            }
+
+
+            return;
+        }
+
+
+        // --------------------------------
+        // REGENERATE RESPONSE
+        // --------------------------------
+
+        const regenerateButton =
+            event.target.closest(
+                ".regenerate-response"
+            );
+
+
+        if (regenerateButton) {
+
+            if (
+                isGenerating ||
+                !lastUserMessage
+            ) {
+                return;
+            }
+
+
+            // Remove latest AI message
+
+            const aiMessages =
+                messagesContainer.querySelectorAll(
+                    ".ai-message:not(.typing-message)"
+                );
+
+
+            const latestAI =
+                aiMessages[
+                    aiMessages.length - 1
+                ];
+
+
+            if (latestAI) {
+                latestAI.remove();
+            }
+
+
+            // Remove latest model response
+            // from conversation history
+
+            for (
+                let i =
+                    conversationHistory.length - 1;
+                i >= 0;
+                i--
+            ) {
+
+                if (
+                    conversationHistory[i].role ===
+                    "model"
+                ) {
+
+                    conversationHistory.splice(
+                        i,
+                        1
+                    );
+
+                    break;
+                }
+
+            }
+
+
+            await sendMessage(
+                lastUserMessage
+            );
+
+
+            return;
+        }
+
+
+        // --------------------------------
+        // EDIT USER MESSAGE
+        // --------------------------------
+
+        const editButton =
+            event.target.closest(
+                ".edit-message"
+            );
+
+
+        if (editButton) {
+
+            const messageElement =
+                editButton.closest(
+                    ".message"
+                );
+
+
+            if (!messageElement) {
+                return;
+            }
+
+
+            const content =
+                messageElement.querySelector(
+                    ".message-content"
+                );
+
+
+            if (!content) {
+                return;
+            }
+
+
+            // Get only the user's message text
+
+            const clone =
+                content.cloneNode(
+                    true
+                );
+
+
+            const actions =
+                clone.querySelector(
+                    ".message-actions"
+                );
+
+
+            if (actions) {
+                actions.remove();
+            }
+
+
+            const oldText =
+                clone.innerText.trim();
+
+
+            messageInput.value =
+                oldText;
+
+
+            resizeTextarea();
+
+            messageInput.focus();
+
+
+            // Remove message from screen
+
+            messageElement.remove();
+
+
+            // Remove corresponding user message
+            // from conversation history
+
+            for (
+                let i =
+                    conversationHistory.length - 1;
+                i >= 0;
+                i--
+            ) {
+
+                if (
+                    conversationHistory[i].role ===
+                    "user"
+                ) {
+
+                    conversationHistory.splice(
+                        i,
+                        1
+                    );
+
+                    break;
+                }
+
+            }
+
+
+            return;
+        }
+
+    }
+);
+
+
+// ========================================
+// VOICE INPUT
+// ========================================
+
+function setupVoiceRecognition() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+    // ------------------------------------
+    // Browser support check
+    // ------------------------------------
+
+    if (!SpeechRecognition) {
+
+        voiceButton.addEventListener(
+            "click",
+            function () {
+
+                voiceStatus.textContent =
+                    "Voice input is not supported in this browser.";
+
+                setTimeout(
+                    function () {
+
+                        voiceStatus.textContent =
+                            "";
+
+                    },
+                    3500
+                );
+
+            }
+        );
+
+        return;
+    }
+
+
+    // ------------------------------------
+    // Create recognition
+    // ------------------------------------
+
+    recognition =
+        new SpeechRecognition();
+
+
+    recognition.continuous = false;
+
+    recognition.interimResults = true;
+
+    recognition.lang = "en-US";
+
+
+    // ------------------------------------
+    // Speech result
+    // ------------------------------------
+
+    recognition.onresult =
+        function (event) {
+
+            let finalTranscript = "";
+
+            let interimTranscript = "";
+
+
+            for (
+                let i = event.resultIndex;
+                i < event.results.length;
+                i++
+            ) {
+
+                const transcript =
+                    event.results[i][0]
+                        .transcript;
+
+
+                if (
+                    event.results[i].isFinal
+                ) {
+
+                    finalTranscript +=
+                        transcript;
+
+                } else {
+
+                    interimTranscript +=
+                        transcript;
+
+                }
+
+            }
+
+
+            if (finalTranscript) {
+
+                if (
+                    messageInput.value.trim()
+                ) {
+
+                    messageInput.value +=
+                        " " +
+                        finalTranscript.trim();
+
+                } else {
+
+                    messageInput.value =
+                        finalTranscript.trim();
+
+                }
+
+            }
+
+
+            if (interimTranscript) {
+
+                voiceStatus.textContent =
+                    interimTranscript;
+
+            } else {
+
+                voiceStatus.textContent =
+                    "Listening...";
+
+            }
+
+
+            resizeTextarea();
+
+        };
+
+
+    // ------------------------------------
+    // Recognition started
+    // ------------------------------------
+
+    recognition.onstart =
+        function () {
+
+            isListening = true;
+
+
+            voiceButton.classList.add(
+                "listening"
+            );
+
+
+            voiceStatus.textContent =
+                "Listening...";
+
+        };
+
+
+    // ------------------------------------
+    // Recognition ended
+    // ------------------------------------
+
+    recognition.onend =
+        function () {
+
+            isListening = false;
+
+
+            voiceButton.classList.remove(
+                "listening"
+            );
+
+
+            if (
+                voiceStatus.textContent ===
+                "Listening..."
+            ) {
+
+                voiceStatus.textContent =
+                    "Voice input finished.";
+
+            }
+
+
+            setTimeout(
+                function () {
+
+                    voiceStatus.textContent =
+                        "";
+
+                },
+                2000
+            );
+
+        };
+
+
+    // ------------------------------------
+    // Recognition error
+    // ------------------------------------
+
+    recognition.onerror =
+        function (event) {
+
+            console.error(
+                "Speech recognition error:",
+                event.error
+            );
+
+
+            isListening = false;
+
+
+            voiceButton.classList.remove(
+                "listening"
+            );
+
+
+            let message =
+                "Voice input failed.";
+
+
+            if (
+                event.error ===
+                "not-allowed"
+            ) {
+
+                message =
+                    "Microphone permission was denied.";
+
+            }
+
+
+            else if (
+                event.error ===
+                "no-speech"
+            ) {
+
+                message =
+                    "No speech detected.";
+
+            }
+
+
+            else if (
+                event.error ===
+                "network"
+            ) {
+
+                message =
+                    "Voice recognition needs an internet connection.";
+
+            }
+
+
+            voiceStatus.textContent =
+                message;
+
+
+            setTimeout(
+                function () {
+
+                    voiceStatus.textContent =
+                        "";
+
+                },
+                3500
+            );
+
+        };
+
+
+    // ------------------------------------
+    // Microphone button
+    // ------------------------------------
+
+    voiceButton.addEventListener(
+        "click",
+        function () {
+
+            if (isListening) {
+
+                recognition.stop();
+
+                return;
+            }
+
+
+            try {
+
+                recognition.start();
+
+            } catch (error) {
+
+                console.error(
+                    "Could not start microphone:",
+                    error
+                );
+
+            }
+
+        }
+    );
+}
+
+
+// ========================================
+// INITIALIZE VOICE
+// ========================================
+
+setupVoiceRecognition();
+
+
+// ========================================
+// INITIALIZE TEXTAREA
+// ========================================
+
+resizeTextarea();
+
+
+// ========================================
+// INITIAL FOCUS
+// ========================================
+
+messageInput.focus();
+
+
+// ========================================
+// GLOBALMEDIA AI READY
+// ========================================
+
+console.log(
+    `GlobalMedia AI initialized. Developer: ${DEVELOPER_NAME}`
+);
+            
