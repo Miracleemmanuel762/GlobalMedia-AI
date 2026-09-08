@@ -1,7 +1,6 @@
 // ========================================
 // GLOBALMEDIA AI
-// FIXED GPT-STYLE RESPONSE SYSTEM
-// + RELIABLE COPY CODE
+// FRONTEND UPGRADE V2
 // ========================================
 
 
@@ -12,7 +11,7 @@
 const DEVELOPER_NAME = "Miracle Emmanuel";
 
 const DEVELOPER_IMAGE =
-  "https://i.postimg.cc/qq6fQynF/unnamed-(2)-(7)-(1).jpg";
+    "https://i.postimg.cc/qq6fQynF/unnamed-(2)-(7)-(1).jpg";
 
 
 // ========================================
@@ -20,23 +19,55 @@ const DEVELOPER_IMAGE =
 // ========================================
 
 const messagesContainer =
-  document.getElementById("messages");
+    document.getElementById("messages");
 
 const messageInput =
-  document.getElementById("messageInput");
+    document.getElementById("messageInput");
 
 const sendButton =
-  document.getElementById("sendButton");
+    document.getElementById("sendButton");
 
 const newChatButton =
-  document.getElementById("newChat");
+    document.getElementById("newChat");
+
+const themeButton =
+    document.getElementById("themeButton");
+
+const voiceButton =
+    document.getElementById("voiceButton");
+
+const voiceStatus =
+    document.getElementById("voiceStatus");
 
 
 // ========================================
-// CONVERSATION HISTORY
+// STATE
 // ========================================
 
 let conversationHistory = [];
+
+let isGenerating = false;
+
+let lastUserMessage = "";
+
+let recognition = null;
+
+let isListening = false;
+
+
+// ========================================
+// HTML ESCAPE
+// ========================================
+
+function escapeHTML(text) {
+
+    return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 
 // ========================================
@@ -45,203 +76,250 @@ let conversationHistory = [];
 
 function formatAIResponse(text) {
 
-  let html = String(text || "");
+    let html = String(text || "");
 
-  // --------------------------------------
-  // ESCAPE HTML
-  // --------------------------------------
+    const codeBlocks = [];
 
-  html = html
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    /*
+        IMPORTANT:
 
+        Code blocks are extracted BEFORE
+        normal Markdown formatting.
 
-  // --------------------------------------
-  // PROTECT CODE BLOCKS
-  // --------------------------------------
+        This prevents <html>, <body>,
+        CSS and JavaScript from being
+        interpreted as actual HTML.
+    */
 
-  const codeBlocks = [];
+    html = html.replace(
+        /```([a-zA-Z0-9_+#.-]*)[ \t]*\r?\n?([\s\S]*?)```/g,
+        function(match, language, code) {
 
-  html = html.replace(
-    /```([a-zA-Z0-9_+-]*)\s*\n?([\s\S]*?)```/g,
-    function(match, language, code) {
+            const index = codeBlocks.length;
 
-      const index =
-        codeBlocks.length;
+            let cleanCode = code
+                .replace(/\r\n/g, "\n")
+                .replace(/\r/g, "\n");
 
-      const cleanCode =
-        code
-          .replace(/\r\n/g, "\n")
-          .replace(/\r/g, "\n")
-          .trim();
+            /*
+                Remove only the first and last
+                accidental blank line.
+            */
 
-      codeBlocks.push({
-        language:
-          language || "code",
+            cleanCode = cleanCode
+                .replace(/^\n/, "")
+                .replace(/\n$/, "");
 
-        code:
-          cleanCode
-      });
+            codeBlocks.push({
 
-      return `___GLOBALMEDIA_CODE_${index}___`;
-    }
-  );
+                language:
+                    language ||
+                    "code",
 
+                code:
+                    cleanCode
 
-  // --------------------------------------
-  // HEADINGS
-  // --------------------------------------
+            });
 
-  html = html.replace(
-    /^###\s+(.*)$/gm,
-    "<h4>$1</h4>"
-  );
-
-  html = html.replace(
-    /^##\s+(.*)$/gm,
-    "<h3>$1</h3>"
-  );
-
-  html = html.replace(
-    /^#\s+(.*)$/gm,
-    "<h2>$1</h2>"
-  );
+            return `___GLOBALMEDIA_CODE_${index}___`;
+        }
+    );
 
 
-  // --------------------------------------
-  // BOLD
-  // --------------------------------------
+    /*
+        Escape normal AI text.
 
-  html = html.replace(
-    /\*\*(.*?)\*\*/g,
-    "<strong>$1</strong>"
-  );
+        Code blocks have already been
+        replaced with placeholders.
+    */
 
-
-  // --------------------------------------
-  // ITALIC
-  // --------------------------------------
-
-  html = html.replace(
-    /(?<!\*)\*([^*\n]+)\*(?!\*)/g,
-    "<em>$1</em>"
-  );
+    html = escapeHTML(html);
 
 
-  // --------------------------------------
-  // INLINE CODE
-  // --------------------------------------
+    // ====================================
+    // HEADINGS
+    // ====================================
 
-  html = html.replace(
-    /`([^`\n]+)`/g,
-    "<code class=\"inline-code\">$1</code>"
-  );
+    html = html.replace(
+        /^###\s+(.*)$/gm,
+        "<h4>$1</h4>"
+    );
 
+    html = html.replace(
+        /^##\s+(.*)$/gm,
+        "<h3>$1</h3>"
+    );
 
-  // --------------------------------------
-  // BLOCKQUOTES
-  // --------------------------------------
-
-  html = html.replace(
-    /^>\s?(.*)$/gm,
-    "<blockquote>$1</blockquote>"
-  );
-
-
-  // --------------------------------------
-  // NUMBERED LIST
-  // --------------------------------------
-
-  html = html.replace(
-    /^\s*(\d+)\.\s+(.*)$/gm,
-    `<div class="ai-list-item">
-       <span class="list-number">$1.</span>
-       <span>$2</span>
-     </div>`
-  );
+    html = html.replace(
+        /^#\s+(.*)$/gm,
+        "<h2>$1</h2>"
+    );
 
 
-  // --------------------------------------
-  // BULLET LIST
-  // --------------------------------------
+    // ====================================
+    // BOLD
+    // ====================================
 
-  html = html.replace(
-    /^\s*[-•]\s+(.*)$/gm,
-    `<div class="ai-list-item">
-       <span class="list-bullet">•</span>
-       <span>$1</span>
-     </div>`
-  );
+    html = html.replace(
+        /\*\*(.*?)\*\*/g,
+        "<strong>$1</strong>"
+    );
 
 
-  // --------------------------------------
-  // NEWLINES
-  // --------------------------------------
+    // ====================================
+    // ITALIC
+    // ====================================
 
-  html = html.replace(
-    /\n\n/g,
-    "<br><br>"
-  );
-
-  html = html.replace(
-    /\n/g,
-    "<br>"
-  );
+    html = html.replace(
+        /(?<!\*)\*([^*\n]+)\*(?!\*)/g,
+        "<em>$1</em>"
+    );
 
 
-  // --------------------------------------
-  // RESTORE CODE BLOCKS
-  // --------------------------------------
+    // ====================================
+    // INLINE CODE
+    // ====================================
 
-  codeBlocks.forEach(
-    function(block, index) {
+    html = html.replace(
+        /`([^`\n]+)`/g,
+        '<code class="inline-code">$1</code>'
+    );
 
-      const placeholder =
-        `___GLOBALMEDIA_CODE_${index}___`;
 
-      const safeCode =
-        block.code
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
+    // ====================================
+    // BLOCKQUOTE
+    // ====================================
 
-      const codeHTML = `
-        <div class="code-wrapper">
+    html = html.replace(
+        /^>\s?(.*)$/gm,
+        "<blockquote>$1</blockquote>"
+    );
 
-          <div class="code-header">
 
-            <span class="code-language">
-              ${block.language}
-            </span>
+    // ====================================
+    // NUMBERED LIST
+    // ====================================
 
-            <button
-              type="button"
-              class="copy-code"
-              data-code-index="${index}"
-            >
-              Copy
-            </button>
-
-          </div>
-
-          <pre class="ai-code"><code>${safeCode}</code></pre>
-
+    html = html.replace(
+        /^\s*(\d+)\.\s+(.*)$/gm,
+        `
+        <div class="ai-list-item">
+            <span class="list-number">$1.</span>
+            <span>$2</span>
         </div>
-      `;
-
-      html =
-        html.replace(
-          placeholder,
-          codeHTML
-        );
-
-    }
-  );
+        `
+    );
 
 
-  return html;
+    // ====================================
+    // BULLET LIST
+    // ====================================
+
+    html = html.replace(
+        /^\s*[-•*]\s+(.*)$/gm,
+        `
+        <div class="ai-list-item">
+            <span class="list-bullet">•</span>
+            <span>$1</span>
+        </div>
+        `
+    );
+
+
+    // ====================================
+    // LINE BREAKS
+    // ====================================
+
+    html = html.replace(
+        /\n\n/g,
+        "<br><br>"
+    );
+
+    html = html.replace(
+        /\n/g,
+        "<br>"
+    );
+
+
+    // ====================================
+    // RESTORE CODE BLOCKS
+    // ====================================
+
+    codeBlocks.forEach(
+        function(block, index) {
+
+            const placeholder =
+                `___GLOBALMEDIA_CODE_${index}___`;
+
+            /*
+                We escape code for safe HTML,
+                but the browser will display
+                it as:
+
+                <html>
+
+                NOT:
+
+                &lt;html&gt;
+
+                because textContent is used
+                inside the <code> element.
+            */
+
+            const codeId =
+                "gm-code-" +
+                Date.now() +
+                "-" +
+                index;
+
+            const codeHTML = `
+                <div class="code-wrapper">
+
+                    <div class="code-header">
+
+                        <span class="code-language">
+                            ${escapeHTML(block.language)}
+                        </span>
+
+                        <div class="code-actions">
+
+                            <button
+                                type="button"
+                                class="copy-code"
+                                data-code-id="${codeId}">
+                                Copy
+                            </button>
+
+                            <button
+                                type="button"
+                                class="download-code"
+                                data-code-id="${codeId}">
+                                Download
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <pre class="ai-code"><code id="${codeId}"></code></pre>
+
+                </div>
+            `;
+
+            html =
+                html.replace(
+                    placeholder,
+                    codeHTML
+                );
+
+        }
+    );
+
+
+    return {
+        html: html,
+        codeBlocks: codeBlocks
+    };
 }
 
 
@@ -249,251 +327,168 @@ function formatAIResponse(text) {
 // ADD MESSAGE
 // ========================================
 
-function addMessage(text, sender) {
+function addMessage(
+    text,
+    sender,
+    options = {}
+) {
 
-  const wrapper =
-    document.createElement("div");
+    const wrapper =
+        document.createElement("div");
 
-  wrapper.className =
-    sender === "user"
-      ? "message user-message"
-      : "message ai-message";
+    wrapper.className =
+        sender === "user"
+            ? "message user-message"
+            : "message ai-message";
 
 
-  // --------------------------------------
-  // AVATAR
-  // --------------------------------------
+    // ====================================
+    // AVATAR
+    // ====================================
 
-  const avatar =
-    document.createElement("div");
+    const avatar =
+        document.createElement("div");
 
-  avatar.className =
-    "avatar";
+    avatar.className =
+        "avatar";
 
-  avatar.textContent =
-    sender === "user"
-      ? "You"
-      : "GM";
+    avatar.textContent =
+        sender === "user"
+            ? "You"
+            : "GM";
 
 
-  // --------------------------------------
-  // MESSAGE CONTENT
-  // --------------------------------------
+    // ====================================
+    // CONTENT
+    // ====================================
 
-  const content =
-    document.createElement("div");
+    const content =
+        document.createElement("div");
 
-  content.className =
-    "message-content";
+    content.className =
+        "message-content";
 
 
-  if (sender === "ai") {
+    if (sender === "ai") {
 
-    content.innerHTML =
-      formatAIResponse(text);
+        const formatted =
+            formatAIResponse(text);
 
-  } else {
+        content.innerHTML =
+            formatted.html;
 
-    content.textContent =
-      text;
+        /*
+            Put actual code into code elements
+            using textContent.
 
-  }
+            This is the important fix for:
 
+            &lt;html&gt;
 
-  wrapper.appendChild(avatar);
+            becoming:
 
-  wrapper.appendChild(content);
+            <html>
+        */
 
-  messagesContainer.appendChild(wrapper);
+        formatted.codeBlocks.forEach(
+            function(block, index) {
 
+                const codeId =
+                    content.querySelector(
+                        `.code-wrapper:nth-of-type(${index + 1}) code`
+                    );
 
-  scrollToBottom();
+                /*
+                    Safer lookup using all code blocks.
+                */
 
-  return wrapper;
-}
+                const allCode =
+                    content.querySelectorAll(
+                        ".ai-code code"
+                    );
 
+                if (allCode[index]) {
 
-// ========================================
-// COPY CODE
-// ========================================
+                    allCode[index].textContent =
+                        block.code;
+                }
 
-async function copyCode(button) {
+            }
+        );
 
-  const codeIndex =
-    Number(
-      button.getAttribute(
-        "data-code-index"
-      )
-    );
+    } else {
 
-
-  /*
-    Find the actual code block
-    inside the same wrapper.
-  */
-
-  const wrapper =
-    button.closest(
-      ".code-wrapper"
-    );
-
-
-  if (!wrapper) {
-
-    console.error(
-      "Code wrapper not found."
-    );
-
-    return;
-
-  }
-
-
-  const codeElement =
-    wrapper.querySelector(
-      "code"
-    );
-
-
-  if (!codeElement) {
-
-    console.error(
-      "Code element not found."
-    );
-
-    return;
-
-  }
-
-
-  const code =
-    codeElement.textContent;
-
-
-  try {
-
-    await navigator.clipboard.writeText(
-      code
-    );
-
-
-    const oldText =
-      button.textContent;
-
-
-    button.textContent =
-      "Copied ✓";
-
-
-    setTimeout(
-      function() {
-
-        button.textContent =
-          oldText;
-
-      },
-      2000
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "Clipboard error:",
-      error
-    );
-
-
-    /*
-      Fallback for browsers where
-      Clipboard API is unavailable.
-    */
-
-    const textarea =
-      document.createElement(
-        "textarea"
-      );
-
-    textarea.value =
-      code;
-
-    textarea.style.position =
-      "fixed";
-
-    textarea.style.left =
-      "-9999px";
-
-    document.body.appendChild(
-      textarea
-    );
-
-    textarea.select();
-
-
-    try {
-
-      document.execCommand(
-        "copy"
-      );
-
-      button.textContent =
-        "Copied ✓";
-
-    } catch (fallbackError) {
-
-      console.error(
-        fallbackError
-      );
-
-      button.textContent =
-        "Copy failed";
+        content.textContent =
+            text;
 
     }
 
 
-    document.body.removeChild(
-      textarea
-    );
+    wrapper.appendChild(avatar);
+
+    wrapper.appendChild(content);
 
 
-    setTimeout(
-      function() {
+    // ====================================
+    // MESSAGE ACTIONS
+    // ====================================
 
-        button.textContent =
-          "Copy";
+    if (sender === "ai" && options.actions !== false) {
 
-      },
-      2000
-    );
+        const actions =
+            document.createElement("div");
 
-  }
+        actions.className =
+            "message-actions";
 
-}
+        actions.innerHTML = `
 
+            <button
+                type="button"
+                class="message-copy">
+                Copy
+            </button>
 
-// ========================================
-// CODE COPY EVENT
-// ========================================
+            <button
+                type="button"
+                class="message-regenerate">
+                Regenerate
+            </button>
 
-document.addEventListener(
-  "click",
-  function(event) {
+        `;
 
-    const button =
-      event.target.closest(
-        ".copy-code"
-      );
-
-
-    if (!button) {
-      return;
+        content.appendChild(actions);
     }
 
 
-    copyCode(button);
+    if (sender === "user" && options.actions !== false) {
 
-  }
-);
+        const actions =
+            document.createElement("div");
+
+        actions.className =
+            "message-actions";
+
+        actions.innerHTML = `
+
+            <button
+                type="button"
+                class="message-edit">
+                Edit
+            </button>
+
+        `;
+
+        content.appendChild(actions);
+    }
+
+
+    messagesContainer.appendChild(wrapper);
+
+    scrollToBottom();
+
+    return wrapper;
+}
 
 
 // ========================================
@@ -502,54 +497,53 @@ document.addEventListener(
 
 function showTyping() {
 
-  const wrapper =
-    document.createElement("div");
+    const wrapper =
+        document.createElement("div");
 
-  wrapper.className =
-    "message ai-message";
-
-
-  const avatar =
-    document.createElement("div");
-
-  avatar.className =
-    "avatar";
-
-  avatar.textContent =
-    "GM";
+    wrapper.className =
+        "message ai-message";
 
 
-  const content =
-    document.createElement("div");
+    const avatar =
+        document.createElement("div");
 
-  content.className =
-    "message-content";
+    avatar.className =
+        "avatar";
 
-
-  content.innerHTML = `
-    <span class="typing-dot">●</span>
-    <span class="typing-dot">●</span>
-    <span class="typing-dot">●</span>
-  `;
+    avatar.textContent =
+        "GM";
 
 
-  wrapper.appendChild(
-    avatar
-  );
+    const content =
+        document.createElement("div");
 
-  wrapper.appendChild(
-    content
-  );
-
-  messagesContainer.appendChild(
-    wrapper
-  );
+    content.className =
+        "message-content";
 
 
-  scrollToBottom();
+    content.innerHTML = `
+
+        <div class="typing-indicator">
+
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+
+        </div>
+
+    `;
 
 
-  return wrapper;
+    wrapper.appendChild(avatar);
+
+    wrapper.appendChild(content);
+
+    messagesContainer.appendChild(wrapper);
+
+    scrollToBottom();
+
+
+    return wrapper;
 }
 
 
@@ -559,154 +553,223 @@ function showTyping() {
 
 function scrollToBottom() {
 
-  messagesContainer.scrollTop =
-    messagesContainer.scrollHeight;
+    setTimeout(
+        function() {
+
+            messagesContainer.scrollTop =
+                messagesContainer.scrollHeight;
+
+        },
+        20
+    );
 
 }
+
+
+// ========================================
+// AUTO RESIZE TEXTAREA
+// ========================================
+
+function resizeTextarea() {
+
+    messageInput.style.height =
+        "auto";
+
+    messageInput.style.height =
+        Math.min(
+            messageInput.scrollHeight,
+            180
+        ) + "px";
+}
+
+
+messageInput.addEventListener(
+    "input",
+    resizeTextarea
+);
 
 
 // ========================================
 // SEND MESSAGE
 // ========================================
 
-async function sendMessage() {
+async function sendMessage(customMessage = null) {
 
-  const message =
-    messageInput.value.trim();
-
-
-  if (!message) {
-    return;
-  }
+    if (isGenerating) {
+        return;
+    }
 
 
-  messageInput.disabled =
-    true;
-
-  sendButton.disabled =
-    true;
-
-
-  addMessage(
-    message,
-    "user"
-  );
+    const message =
+        customMessage !== null
+            ? customMessage.trim()
+            : messageInput.value.trim();
 
 
-  messageInput.value =
-    "";
+    if (!message) {
+        return;
+    }
 
 
-  const typingMessage =
-    showTyping();
+    isGenerating = true;
+
+    lastUserMessage = message;
 
 
-  try {
+    messageInput.disabled =
+        true;
 
-    const response =
-      await fetch(
-        "/api/chat",
-        {
-          method: "POST",
+    sendButton.disabled =
+        true;
 
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
 
-          body: JSON.stringify({
+    addMessage(
+        message,
+        "user"
+    );
 
-            message:
-              message,
 
-            history:
-              conversationHistory
+    messageInput.value =
+        "";
 
-          })
+    resizeTextarea();
+
+
+    const typingMessage =
+        showTyping();
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/chat",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            message:
+                                message,
+
+                            history:
+                                conversationHistory
+
+                        })
+
+                }
+            );
+
+
+        let data;
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch {
+
+            throw new Error(
+                "The server returned an invalid response."
+            );
 
         }
-      );
 
 
-    const data =
-      await response.json();
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Something went wrong."
+            );
+
+        }
 
 
-    typingMessage.remove();
+        const aiReply =
+            data.reply;
 
 
-    if (!response.ok) {
+        if (!aiReply) {
 
-      throw new Error(
-        data.error ||
-        "Something went wrong."
-      );
+            throw new Error(
+                "GlobalMedia AI returned an empty response."
+            );
+
+        }
+
+
+        typingMessage.remove();
+
+
+        addMessage(
+            aiReply,
+            "ai"
+        );
+
+
+        // =================================
+        // SAVE HISTORY
+        // =================================
+
+        conversationHistory.push({
+
+            role: "user",
+
+            text: message
+
+        });
+
+
+        conversationHistory.push({
+
+            role: "model",
+
+            text: aiReply
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "GlobalMedia AI Error:",
+            error
+        );
+
+
+        if (typingMessage) {
+
+            typingMessage.remove();
+
+        }
+
+
+        addMessage(
+            "Sorry, I couldn't connect to GlobalMedia AI right now. Please try again.",
+            "ai"
+        );
 
     }
 
 
-    const aiReply =
-      data.reply;
+    isGenerating =
+        false;
 
+    messageInput.disabled =
+        false;
 
-    addMessage(
-      aiReply,
-      "ai"
-    );
+    sendButton.disabled =
+        false;
 
-
-    // ------------------------------------
-    // SAVE CONVERSATION
-    // ------------------------------------
-
-    conversationHistory.push({
-
-      role:
-        "user",
-
-      text:
-        message
-
-    });
-
-
-    conversationHistory.push({
-
-      role:
-        "model",
-
-      text:
-        aiReply
-
-    });
-
-
-  } catch (error) {
-
-    console.error(
-      "GlobalMedia AI Error:",
-      error
-    );
-
-
-    typingMessage.remove();
-
-
-    addMessage(
-      "Sorry, I couldn't connect to GlobalMedia AI right now. Please try again.",
-      "ai"
-    );
-
-  }
-
-
-  messageInput.disabled =
-    false;
-
-  sendButton.disabled =
-    false;
-
-  messageInput.focus();
+    messageInput.focus();
 
 }
 
@@ -717,10 +780,14 @@ async function sendMessage() {
 
 if (sendButton) {
 
-  sendButton.addEventListener(
-    "click",
-    sendMessage
-  );
+    sendButton.addEventListener(
+        "click",
+        function() {
+
+            sendMessage();
+
+        }
+    );
 
 }
 
@@ -731,73 +798,377 @@ if (sendButton) {
 
 if (messageInput) {
 
-  messageInput.addEventListener(
-    "keydown",
-    function(event) {
+    messageInput.addEventListener(
+        "keydown",
+        function(event) {
 
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
 
-        event.preventDefault();
+                event.preventDefault();
 
-        sendMessage();
+                sendMessage();
 
-      }
+            }
 
-    }
-  );
+        }
+    );
 
 }
 
 
 // ========================================
-// NEW CHAT
+// SUGGESTIONS
 // ========================================
 
-if (newChatButton) {
-
-  newChatButton.addEventListener(
+document.addEventListener(
     "click",
-    function() {
+    function(event) {
 
-      conversationHistory =
-        [];
-
-
-      messagesContainer.innerHTML = `
-
-        <div class="message ai-message">
-
-          <div class="avatar">
-            GM
-          </div>
-
-          <div class="message-content">
-
-            Hello! 👋 I'm
-            <strong>
-              GlobalMedia AI
-            </strong>.
-
-            <br><br>
-
-            How can I help you today?
-
-          </div>
-
-        </div>
-
-      `;
+        const suggestion =
+            event.target.closest(
+                ".suggestion"
+            );
 
 
-      messageInput.value =
-        "";
+        if (!suggestion) {
+            return;
+        }
 
-      messageInput.focus();
+
+        const prompt =
+            suggestion.getAttribute(
+                "data-prompt"
+            );
+
+
+        if (!prompt) {
+            return;
+        }
+
+
+        messageInput.value =
+            prompt;
+
+        resizeTextarea();
+
+        sendMessage();
 
     }
-  );
+);
+
+
+// ========================================
+// COPY CODE
+// ========================================
+
+async function copyCode(button) {
+
+    const codeId =
+        button.getAttribute(
+            "data-code-id"
+        );
+
+
+    const codeElement =
+        document.getElementById(
+            codeId
+        );
+
+
+    if (!codeElement) {
+
+        console.error(
+            "Code element not found."
+        );
+
+        return;
+    }
+
+
+    const code =
+        codeElement.textContent;
+
+
+    const oldText =
+        button.textContent;
+
+
+    try {
+
+        if (
+            navigator.clipboard &&
+            window.isSecureContext
+        ) {
+
+            await navigator.clipboard.writeText(
+                code
+            );
+
+        } else {
+
+            fallbackCopy(code);
+
+        }
+
+
+        button.textContent =
+            "Copied ✓";
+
+
+    } catch (error) {
+
+        console.error(
+            "Clipboard error:",
+            error
+        );
+
+
+        try {
+
+            fallbackCopy(code);
+
+            button.textContent =
+                "Copied ✓";
+
+        } catch {
+
+            button.textContent =
+                "Copy failed";
+
+        }
 
     }
+
+
+    setTimeout(
+        function() {
+
+            button.textContent =
+                oldText;
+
+        },
+        2000
+    );
+
+}
+
+
+// ========================================
+// FALLBACK COPY
+// ========================================
+
+function fallbackCopy(text) {
+
+    const textarea =
+        document.createElement(
+            "textarea"
+        );
+
+    textarea.value =
+        text;
+
+    textarea.style.position =
+        "fixed";
+
+    textarea.style.top =
+        "0";
+
+    textarea.style.left =
+        "-9999px";
+
+    textarea.style.opacity =
+        "0";
+
+
+    document.body.appendChild(
+        textarea
+    );
+
+
+    textarea.focus();
+
+    textarea.select();
+
+
+    const successful =
+        document.execCommand(
+            "copy"
+        );
+
+
+    textarea.remove();
+
+
+    if (!successful) {
+
+        throw new Error(
+            "Copy command failed."
+        );
+
+    }
+
+}
+
+
+// ========================================
+// DOWNLOAD CODE
+// ========================================
+
+function downloadCode(button) {
+
+    const codeId =
+        button.getAttribute(
+            "data-code-id"
+        );
+
+
+    const codeElement =
+        document.getElementById(
+            codeId
+        );
+
+
+    if (!codeElement) {
+        return;
+    }
+
+
+    const code =
+        codeElement.textContent;
+
+
+    const wrapper =
+        button.closest(
+            ".code-wrapper"
+        );
+
+
+    const language =
+        wrapper
+            ?.querySelector(
+                ".code-language"
+            )
+            ?.textContent
+            ?.trim()
+            .toLowerCase() ||
+        "txt";
+
+
+    const extensions = {
+
+        html: "html",
+        htm: "html",
+
+        css: "css",
+
+        javascript: "js",
+        js: "js",
+
+        typescript: "ts",
+        ts: "ts",
+
+        python: "py",
+
+        php: "php",
+
+        java: "java",
+
+        json: "json",
+
+        xml: "xml",
+
+        sql: "sql",
+
+        bash: "sh",
+        shell: "sh",
+
+        text: "txt",
+        txt: "txt",
+
+        code: "txt"
+
+    };
+
+
+    const extension =
+        extensions[language] ||
+        "txt";
+
+
+    const blob =
+        new Blob(
+            [code],
+            {
+                type:
+                    "text/plain;charset=utf-8"
+            }
+        );
+
+
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+
+    const link =
+        document.createElement(
+            "a"
+        );
+
+
+    link.href =
+        url;
+
+
+    link.download =
+        `globalmedia-ai-code.${extension}`;
+
+
+    document.body.appendChild(
+        link
+    );
+
+
+    link.click();
+
+    link.remove();
+
+
+    URL.revokeObjectURL(
+        url
+    );
+
+}
+
+
+// ========================================
+// MESSAGE ACTIONS
+// ========================================
+
+document.addEventListener(
+    "click",
+    async function(event) {
+
+        // ---------------------------------
+        // COPY CODE
+        // ---------------------------------
+
+        const copyCodeButton =
+            event.target.closest(
+                ".copy-code"
+            );
+
+
+        if (copyCodeButton) {
+
+            await copyCode(
+                copyCodeButton
+            );
+
+            return;
+
+   
